@@ -561,8 +561,8 @@ def main():
     console.print(f"\n[bold]Total items found:[/bold] {len(all_items)}")
     if skipped_count > 0:
         console.print(f"[bold]Items skipped due to group filtering:[/bold] {skipped_count}")
-    console.print(f"[bold]Items checked:[/bold] {len(items)}")
-    console.print(f"[bold green]Items found on tracker:[/bold green] {len(items) - len(not_found)}")
+    console.print(f"[bold]Items checked:[/bold] {len(filtered_items)}")
+    console.print(f"[bold green]Items found on tracker:[/bold green] {len(filtered_items) - len(not_found)}")
     console.print(f"[bold red]Items NOT found on tracker:[/bold red] {len(not_found)}")
 
 
