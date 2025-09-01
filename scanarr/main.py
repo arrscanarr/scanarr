@@ -502,7 +502,8 @@ def main():
     console.print()
 
     # Search for each item
-    not_found = [item for item in filtered_items if item not in searcher.search_and_verify_all(filtered_items, args.verbose)]
+    found_items = searcher.search_and_verify_all(filtered_items, args.verbose)
+    not_found = list(set(filtered_items) - set(found_items))
 
     # Print results
     console.print("\n" + "=" * 50)
