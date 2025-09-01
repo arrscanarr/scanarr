@@ -133,11 +133,11 @@ class TrackerSearcher:
             task = progress.add_task("Searching...", total=len(query_items))
 
             for i, item in enumerate(query_items, 1):
-                if i > 1 and self.delay > 0:
-                    time.sleep(self.delay)
-
                 # Update the progress description
                 progress.update(task, description=f"Searching [{i}/{len(query_items)}] {item[:50]}...")
+
+                if i > 1 and self.delay > 0:
+                    time.sleep(self.delay)
 
                 # Perform the search
                 if self.search_and_verify(item, verbose=verbose):
