@@ -481,27 +481,28 @@ def main():
     # Initialize the searcher
     searcher = TrackerSearcher(args.api_url, args.api_key, args.tracker, args.delay)
 
-    # Print delay information if enabled
-    if args.delay > 0:
-        console.print(f"Using delay of {args.delay} seconds between requests")
-
-    # Get all files and folders
-    console.print(f"[bold]Scanning directory:[/bold] {args.input_dir}")
     all_items = get_files_and_folders(args.input_dir)
-    console.print(f"Found {len(all_items)} items total")
+    filtered_items, skipped_count = filter_items_by_group(all_items, args.exclude_groups)
 
-    # Filter out excluded groups
-    items, skipped_count = filter_items_by_group(all_items, args.exclude_groups)
+    # Print initial info
+    console.print(f"[bold]Scanning directory:[/bold] {args.input_dir}")
 
     if args.exclude_groups:
         console.print(f"[bold]Excluded groups:[/bold] {', '.join(args.exclude_groups)}")
-        console.print(f"Skipped {skipped_count} items due to group filtering")
+    
+    console.print(f"[bold]Items found[/bold]: {len(all_items)}")
 
-    console.print(f"[bold]Items to search:[/bold] {len(items)}")
+    if skipped_count > 0:
+        console.print(f"[bold]Items skipped due to filtering:[/bold] {skipped_count}")
+
+    console.print(f"[bold]Items to search:[/bold] {len(filtered_items)}")
+
+    console.print(f"[bold]Delay between search queries:[/bold] {args.delay}s")
+
     console.print()
 
     # Search for each item
-    not_found = [item for item in items if item not in searcher.search_and_verify_all(items, args.verbose)]
+    not_found = [item for item in filtered_items if item not in searcher.search_and_verify_all(filtered_items, args.verbose)]
 
     # Print results
     console.print("\n" + "=" * 50)
