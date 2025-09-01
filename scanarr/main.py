@@ -14,6 +14,8 @@ import bencodepy
 import time
 from urllib.parse import quote_plus
 from typing import List, Dict, Any
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 
 class TrackerSearcher:
@@ -128,12 +130,13 @@ class TrackerSearcher:
         # You might want to make this more sophisticated based on your needs
         return query.lower() in torrent_name.lower()
     
-    def search_and_verify(self, query: str) -> bool:
+    def search_and_verify(self, query: str, verbose: bool = True) -> bool:
         """
         Search for a query and verify if it exists on the tracker.
         
         Args:
             query: Search query string
+            verbose: Whether to show detailed output
             
         Returns:
             True if found on tracker, False otherwise
@@ -161,18 +164,20 @@ class TrackerSearcher:
             if torrent_name and self.matches_query(torrent_name, query):
                 found_match = True
         
-        # List all results with their titles
-        results_amount = len(results)
-        if results_amount > 0:
-            if found_match:
-                print("✓ Found matching result")
-            else:
-                print("✗ Not found match in results")
+        # Show detailed output only in verbose mode
+        if verbose:
+            # List all results with their titles
+            results_amount = len(results)
+            if results_amount > 0:
+                if found_match:
+                    print("✓ Found matching result")
+                else:
+                    print("✗ Not found match in results")
 
-            print(f"  Found {results_amount} results:")
-            print("    " + "\n    ".join(results))
-        else:
-            print("✗ No results found")
+                print(f"  Found {results_amount} results:")
+                print("    " + "\n    ".join(results))
+            else:
+                print("✗ No results found")
 
         return found_match
 
@@ -425,6 +430,8 @@ def main():
                        help='Group names to exclude from search (group name is after last dash in filename)')
     parser.add_argument('--delay', type=float, default=0, 
                        help='Delay in seconds between requests (default: 0, recommended: 1-3 seconds for rate limiting)')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Show detailed search results (default: show minimal progress)')
     
     args = parser.parse_args()
     
@@ -455,11 +462,37 @@ def main():
     
     # Search for each item
     not_found = []
+    console = Console()
     
-    for item in items:
-        print(f"\nSearching for: {item}")
-        if not searcher.search_and_verify(item):
-            not_found.append(item)
+    if args.verbose:
+        # Verbose mode: show detailed output for each search
+        for item in items:
+            console.print(f"\nSearching for: {item}")
+            found = searcher.search_and_verify(item, verbose=True)
+            if not found:
+                not_found.append(item)
+    else:
+        # Non-verbose mode: show progress with spinner
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True
+        ) as progress:
+            task = progress.add_task("Searching...", total=len(items))
+            
+            for i, item in enumerate(items, 1):
+                # Update the progress description
+                progress.update(task, description=f"Searching ({i}/{len(items)}) {item[:50]}...")
+                
+                # Perform the search
+                found = searcher.search_and_verify(item, verbose=False)
+                
+                if not found:
+                    not_found.append(item)
+                
+                # Update progress
+                progress.update(task, advance=1)
     
     # Print results
     print("\n" + "="*50)
