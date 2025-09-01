@@ -19,7 +19,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 
 class TrackerSearcher:
-    def __init__(self, api_url: str, api_key: str, tracker: str, delay: float = 0):
+    def __init__(self, api_url: str, api_key: str, tracker: str, delay: float = 0, max_retries: int = 10):
         """
         Initialize the tracker searcher.
 
@@ -33,8 +33,8 @@ class TrackerSearcher:
         self.api_key = api_key
         self.tracker = tracker
         self.delay = delay
+        self.max_retries = max_retries
         self.session = requests.Session()
-        self.error_count = 0
 
     def search_tracker(self, query: str) -> List[Dict] | None:
         """
@@ -46,10 +46,6 @@ class TrackerSearcher:
         Returns:
             List of search results from the API
         """
-        # Apply delay before making the request
-        if self.delay > 0:
-            time.sleep(self.delay)
-
         encoded_query = quote_plus(query)
         encoded_tracker = quote_plus(self.tracker)
 
@@ -69,18 +65,10 @@ class TrackerSearcher:
         for indexer in indexers:
             error = indexer.get('Error')
             if error:
-                self.error_count += 1
                 if "TooManyRequests" in error:
                     print(f"Error: Too many requests for query '{query}'.")
                 else:
                     print(f"Error: Unknown error occurred for query '{query}'. Check Jackett logs for more details.")
-
-                # Exit if too many errors
-                if self.error_count > 10:
-                    print("Error: More than 10 errors occurred. Exiting.")
-                    print(
-                        "Depending on the cause of the errors, you may want to increase the delay between requests with '--delay <seconds>' or check your credentials / IP bans.")
-                    sys.exit(1)
 
                 return None
         return json_response.get('Results', [])
@@ -131,7 +119,35 @@ class TrackerSearcher:
         # You might want to make this more sophisticated based on your needs
         return query.lower() in torrent_name.lower()
 
-    def search_and_verify(self, query: str, verbose: bool = True) -> bool:
+    def search_and_verify_all(self, query_items: List[str], verbose: bool = False) -> List[str]:
+        console = Console()
+        found = []
+
+        with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+                transient=True
+        ) as progress:
+            task = progress.add_task("Searching...", total=len(query_items))
+
+            for i, item in enumerate(query_items, 1):
+                if i > 1 and self.delay > 0:
+                    time.sleep(self.delay)
+
+                # Update the progress description
+                progress.update(task, description=f"Searching [{i}/{len(query_items)}] {item[:50]}...")
+
+                # Perform the search
+                if self.search_and_verify(item, verbose=verbose):
+                    found.append(item)
+
+                # Update progress
+                progress.update(task, advance=1)
+
+        return found
+
+    def search_and_verify(self, query: str, verbose: bool = False) -> bool:
         """
         Search for a query and verify if it exists on the tracker.
 
@@ -143,17 +159,35 @@ class TrackerSearcher:
             True if found on tracker, False otherwise
         """
 
-        raw_results = self.search_tracker(query)
-        results = []
+        raw_results = None
+        had_errors = False
+
+        for attempt in range(self.max_retries):
+            raw_results = self.search_tracker(query)
+            if raw_results is not None:
+                break
+            else:
+                had_errors = True
+                retry_delay = max(self.delay, 4.0) * (attempt + 1)
+                print(f"Search failed. Retrying in {retry_delay}s (Attempt {attempt + 1} of {self.max_retries})")
+                time.sleep(retry_delay)
 
         if raw_results is None:
-            return False
+            print(f"Error: Search failed! No more retries left.")
+            print("Depending on the cause of the error, you may want to increase the delay between requests or check your credentials / IP bans.")
+            sys.exit(1)
 
         if len(raw_results) > 5:
             print(f"Error: Too many results ({len(raw_results)}) for query '{query}'. Aborting.")
             sys.exit(1)
 
+        if had_errors:
+            self.delay += 1
+            print("Because there were errors during this search, the global delay has been increased by 1s. Please consider raising it by default.")
+
+        results = []
         found_match = False
+
         for result in raw_results:
             original_title = result.get('Title')
             link = result.get('Link')
@@ -167,17 +201,20 @@ class TrackerSearcher:
         # Show detailed output only in verbose mode
         if verbose:
             # List all results with their titles
+            print(f"Search results for: {query}")
+
             results_amount = len(results)
             if results_amount > 0:
                 if found_match:
                     print("✓ Found matching result")
                 else:
-                    print("✗ Not found match in results")
+                    print("✗ No match found in results")
 
                 print(f"  Found {results_amount} results:")
                 print("    " + "\n    ".join(results))
             else:
                 print("✗ No results found")
+            print()
 
         return found_match
 
@@ -459,40 +496,10 @@ def main():
         print(f"Skipped {skipped_count} items due to group filtering")
 
     print(f"Items to search: {len(items)}")
+    print()
 
     # Search for each item
-    not_found = []
-    console = Console()
-
-    if args.verbose:
-        # Verbose mode: show detailed output for each search
-        for item in items:
-            console.print(f"\nSearching for: {item}")
-            found = searcher.search_and_verify(item, verbose=True)
-            if not found:
-                not_found.append(item)
-    else:
-        # Non-verbose mode: show progress with spinner
-        with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-                transient=True
-        ) as progress:
-            task = progress.add_task("Searching...", total=len(items))
-
-            for i, item in enumerate(items, 1):
-                # Update the progress description
-                progress.update(task, description=f"Searching ({i}/{len(items)}) {item[:50]}...")
-
-                # Perform the search
-                found = searcher.search_and_verify(item, verbose=False)
-
-                if not found:
-                    not_found.append(item)
-
-                # Update progress
-                progress.update(task, advance=1)
+    not_found = [item for item in items if item not in searcher.search_and_verify_all(items, args.verbose)]
 
     # Print results
     print("\n" + "=" * 50)
@@ -554,10 +561,6 @@ def main():
     print(f"Items checked: {len(items)}")
     print(f"Items found on tracker: {len(items) - len(not_found)}")
     print(f"Items NOT found on tracker: {len(not_found)}")
-    if searcher.error_count > 0:
-        print(f"Search finished, but some errors occurred during search: {searcher.error_count}")
-        print(
-            "Depending on the cause of the errors, you may want to increase the delay between requests or check your credentials / IP bans.")
 
 
 if __name__ == "__main__":
