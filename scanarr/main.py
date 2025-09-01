@@ -202,20 +202,21 @@ class TrackerSearcher:
         # Show detailed output only in verbose mode
         if verbose:
             # List all results with their titles
-            print(f"Search results for: {query}")
+            console.print(f"[bold]Search results for:[/bold] {query}")
 
             results_amount = len(results)
             if results_amount > 0:
                 if found_match:
-                    print("✓ Found matching result")
+                    console.print("[green]✓[/green] Found matching result")
                 else:
-                    print("✗ No match found in results")
+                    console.print("[red]✗[/red] No match found in results")
 
-                print(f"  Found {results_amount} results:")
-                print("    " + "\n    ".join(results))
+                console.print(f"  Found {results_amount} results:")
+                for result in results:
+                    console.print(f"    {result}")
             else:
-                print("✗ No results found")
-            print()
+                console.print("[red]✗[/red] No results found")
+            console.print()
 
         return found_match
 
@@ -482,34 +483,34 @@ def main():
 
     # Print delay information if enabled
     if args.delay > 0:
-        print(f"Using delay of {args.delay} seconds between requests")
+        console.print(f"Using delay of {args.delay} seconds between requests")
 
     # Get all files and folders
-    print(f"Scanning directory: {args.input_dir}")
+    console.print(f"[bold]Scanning directory:[/bold] {args.input_dir}")
     all_items = get_files_and_folders(args.input_dir)
-    print(f"Found {len(all_items)} items total")
+    console.print(f"Found {len(all_items)} items total")
 
     # Filter out excluded groups
     items, skipped_count = filter_items_by_group(all_items, args.exclude_groups)
 
     if args.exclude_groups:
-        print(f"Excluded groups: {', '.join(args.exclude_groups)}")
-        print(f"Skipped {skipped_count} items due to group filtering")
+        console.print(f"[bold]Excluded groups:[/bold] {', '.join(args.exclude_groups)}")
+        console.print(f"Skipped {skipped_count} items due to group filtering")
 
-    print(f"Items to search: {len(items)}")
-    print()
+    console.print(f"[bold]Items to search:[/bold] {len(items)}")
+    console.print()
 
     # Search for each item
     not_found = [item for item in items if item not in searcher.search_and_verify_all(items, args.verbose)]
 
     # Print results
-    print("\n" + "=" * 50)
-    print("RESULTS")
-    print("=" * 50)
+    console.print("\n" + "=" * 50)
+    console.print("[bold]RESULTS[/bold]")
+    console.print("=" * 50)
 
     if not_found:
         # Add sample indicators to items that may contain samples
-        print("Checking for potential sample files and proof images in folders...")
+        console.print("Checking for potential sample files and proof images in folders...")
         labelled_items = get_labelled_items(not_found, args.input_dir)
 
         # Calculate the maximum label width for proper alignment
@@ -525,7 +526,7 @@ def main():
                 label_width = len('(' + ''.join(labels) + ')')
                 max_label_width = max(max_label_width, label_width)
 
-        print(f"\nFiles/folders NOT found on tracker ({len(labelled_items)}):")
+        console.print(f"\n[bold]Files/folders NOT found on tracker ({len(labelled_items)}):[/bold]")
         for item_info in labelled_items:
             labels = []
             if item_info['labels']['has_samples']:
@@ -537,31 +538,31 @@ def main():
                 label_string = '(' + ''.join(labels) + ')'
                 # Pad label to max width
                 formatted_label = label_string.ljust(max_label_width)
-                print(f"  {formatted_label} {item_info['original_name']}")
+                console.print(f"  [yellow]{formatted_label}[/yellow] {item_info['original_name']}")
             else:
                 # Add spaces to align with labeled items
                 padding = ' ' * (max_label_width + 1) if max_label_width > 0 else ''
-                print(f"  {padding}{item_info['original_name']}")
+                console.print(f"  {padding}{item_info['original_name']}")
 
         # Print legend if any items have flags
         has_samples = any(item['labels']['has_samples'] for item in labelled_items)
         has_proof = any(item['labels']['has_proof'] for item in labelled_items)
 
         if has_samples or has_proof:
-            print("\nLegend:")
+            console.print("\n[bold]Legend:[/bold]")
             if has_samples:
-                print("  S = Folder may contain sample files (media files 1MB-110MB)")
+                console.print("  [yellow]S[/yellow] = Folder may contain sample files (media files 1MB-110MB)")
             if has_proof:
-                print("  P = Folder may contain proof images (image files with 'proof' in filename)")
+                console.print("  [yellow]P[/yellow] = Folder may contain proof images (image files with 'proof' in filename)")
     else:
-        print("\nAll files/folders were found on the tracker!")
+        console.print("\n[green]All files/folders were found on the tracker![/green]")
 
-    print(f"\nTotal items found: {len(all_items)}")
+    console.print(f"\n[bold]Total items found:[/bold] {len(all_items)}")
     if skipped_count > 0:
-        print(f"Items skipped due to group filtering: {skipped_count}")
-    print(f"Items checked: {len(items)}")
-    print(f"Items found on tracker: {len(items) - len(not_found)}")
-    print(f"Items NOT found on tracker: {len(not_found)}")
+        console.print(f"[bold]Items skipped due to group filtering:[/bold] {skipped_count}")
+    console.print(f"[bold]Items checked:[/bold] {len(items)}")
+    console.print(f"[bold green]Items found on tracker:[/bold green] {len(items) - len(not_found)}")
+    console.print(f"[bold red]Items NOT found on tracker:[/bold red] {len(not_found)}")
 
 
 if __name__ == "__main__":
