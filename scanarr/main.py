@@ -17,6 +17,8 @@ from typing import List, Dict, Any
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+console = Console()
+
 
 class TrackerSearcher:
     def __init__(self, api_url: str, api_key: str, tracker: str, delay: float = 0, max_retries: int = 10):
@@ -66,9 +68,9 @@ class TrackerSearcher:
             error = indexer.get('Error')
             if error:
                 if "TooManyRequests" in error:
-                    print(f"Error: Too many requests for query '{query}'.")
+                    console.print(f"[bold red]Error:[/bold red] Too many requests for query '{query}'.")
                 else:
-                    print(f"Error: Unknown error occurred for query '{query}'. Check Jackett logs for more details.")
+                    console.print(f"[bold red]Error:[/bold red] Unknown error occurred for query '{query}'. Check Jackett logs for more details.")
 
                 return None
         return json_response.get('Results', [])
@@ -100,7 +102,7 @@ class TrackerSearcher:
                 return name
 
         except Exception as e:
-            print(f"Error parsing torrent from {torrent_url}: {e}")
+            console.print(f"[bold red]Error[/bold red] parsing torrent from {torrent_url}: {e}")
 
         return ""
 
@@ -120,7 +122,6 @@ class TrackerSearcher:
         return query.lower() in torrent_name.lower()
 
     def search_and_verify_all(self, query_items: List[str], verbose: bool = False) -> List[str]:
-        console = Console()
         found = []
 
         with Progress(
@@ -169,21 +170,21 @@ class TrackerSearcher:
             else:
                 had_errors = True
                 retry_delay = max(self.delay, 4.0) * (attempt + 1)
-                print(f"Search failed. Retrying in {retry_delay}s (Attempt {attempt + 1} of {self.max_retries})")
+                console.print(f"[yellow]Warning:[/yellow] Search failed. Retrying in {retry_delay}s (Attempt {attempt + 1} of {self.max_retries})")
                 time.sleep(retry_delay)
 
         if raw_results is None:
-            print(f"Error: Search failed! No more retries left.")
-            print("Depending on the cause of the error, you may want to increase the delay between requests or check your credentials / IP bans.")
+            console.print("[bold red]Error:[/bold red] Search failed! No more retries left.")
+            console.print("Depending on the cause of the error, you may want to increase the delay between requests or check your credentials / IP bans.")
             sys.exit(1)
 
         if len(raw_results) > 5:
-            print(f"Error: Too many results ({len(raw_results)}) for query '{query}'. Aborting.")
+            console.print(f"[bold red]Error:[/bold red] Too many results ({len(raw_results)}) for query '{query}'. Aborting.")
             sys.exit(1)
 
         if had_errors:
             self.delay += 1
-            print("Because there were errors during this search, the global delay has been increased by 1s. Please consider raising it by default.")
+            console.print("[yellow]Warning:[/yellow] Because there were errors during this search, the global delay has been increased by 1s. Please consider raising it by default.")
 
         results = []
         found_match = False
@@ -235,7 +236,7 @@ def get_files_and_folders(directory: str) -> List[str]:
             items.append(item)
         return items
     except OSError as e:
-        print(f"Error reading directory '{directory}': {e}")
+        console.print(f"[bold red]Error[/bold red] reading directory '{directory}': {e}")
         sys.exit(1)
 
 
@@ -320,7 +321,7 @@ def has_sample_files(folder_path: str) -> bool:
                     # Skip files that can't be accessed
                     continue
     except OSError as e:
-        print(f"Error checking folder '{folder_path}': {e}")
+        console.print(f"[yellow]Warning:[/yellow] Error checking folder '{folder_path}': {e}")
 
     return False
 
@@ -354,7 +355,7 @@ def has_proof_images(folder_path: str) -> bool:
                 if 'proof' in file.lower():
                     return True
     except OSError as e:
-        print(f"Error checking folder '{folder_path}': {e}")
+        console.print(f"[yellow]Warning:[/yellow] Error checking folder '{folder_path}' for proofs: {e}")
 
     return False
 
@@ -473,7 +474,7 @@ def main():
     args = parser.parse_args()
 
     if not os.path.isdir(args.input_dir):
-        print(f"Error: '{args.input_dir}' is not a valid directory")
+        console.print(f"[bold red]Error:[/bold red] '{args.input_dir}' is not a valid directory")
         sys.exit(1)
 
     # Initialize the searcher
