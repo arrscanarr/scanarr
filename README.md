@@ -1,6 +1,7 @@
 ## Scanarr
 
 A tool for searching files and folders against tracker APIs and reporting which ones are not found on the tracker.
+To use it, you must have a configured **Jackett** instance. Other tools like Prowlarr or the use of Torznab is currently not supported.
 
 ### Installation
 
