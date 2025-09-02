@@ -565,7 +565,7 @@ def main():
         console.print(f"[bold]Items skipped due to group filtering:[/bold] {skipped_count}")
     console.print(f"[bold]Items checked:[/bold] {len(filtered_items)}")
     console.print(f"[bold green]Items found on tracker:[/bold green] {len(filtered_items) - len(not_found)}")
-    console.print(f"[bold green]Items NOT found on tracker:[/bold red] {len(not_found)}")
+    console.print(f"[bold green]Items NOT found on tracker:[/bold green] {len(not_found)}")
 
 
 if __name__ == "__main__":
