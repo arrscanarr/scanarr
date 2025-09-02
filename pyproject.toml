@@ -1,5 +1,8 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+  "hatchling",
+  "hatch-vcs"
+]
 build-backend = "hatchling.build"
 
 [project]
@@ -38,3 +41,9 @@ dev = [
 Documentation = "https://github.com/arrscanarr/scanarr#readme"
 Issues = "https://github.com/arrscanarr/scanarr/issues"
 Source = "https://github.com/arrscanarr/scanarr"
+
+[project.scripts]
+scanarr = "scanarr.main:main"
+
+[tool.hatch.version]
+source = "vcs"

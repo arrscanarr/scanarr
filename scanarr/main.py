@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Tracker Search Script
 
@@ -16,6 +15,7 @@ from urllib.parse import quote_plus
 from typing import List, Dict, Any
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from importlib.metadata import version as pkg_version
 
 console = Console()
 
@@ -471,6 +471,7 @@ def main():
                         help='Delay in seconds between requests (default: 0, recommended: 1-3 seconds for rate limiting)')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='Show detailed search results (default: show minimal progress)')
+    parser.add_argument('--version', action='version', version=f'scanarr {pkg_version("scanarr")}')
 
     args = parser.parse_args()
 
