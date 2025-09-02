@@ -235,7 +235,7 @@ def get_files_and_folders(directory: str) -> List[str]:
         items = []
         for item in os.listdir(directory):
             items.append(item)
-        return items
+        return sorted(items)
     except OSError as e:
         console.print(f"[bold red]Error[/bold red] reading directory '{directory}': {e}")
         sys.exit(1)
@@ -455,7 +455,7 @@ def get_labelled_items(items: List[str], base_directory: str) -> List[Dict[str, 
 
         result.append(item_info)
 
-    return result
+    return sorted(result)
 
 
 def main():
