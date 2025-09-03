@@ -455,7 +455,7 @@ def get_labelled_items(items: List[str], base_directory: str) -> List[Dict[str, 
 
         result.append(item_info)
 
-    return sorted(result)
+    return sorted(result, key=lambda x: x['name'])
 
 
 def main():
